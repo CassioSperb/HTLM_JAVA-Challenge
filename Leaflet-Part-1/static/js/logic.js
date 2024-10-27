@@ -2,12 +2,11 @@
 let url = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
 
 // Initialize the map, centered on the continental U.S.
-let map = L.map('map').setView([37.7749, -122.4194], 4);
+let map = L.map('map').setView([37.7749, -122.4194], 5);
 
 // Set up the tile layer (OpenStreetMap tiles)
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '© OpenStreetMap contributors'
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 }).addTo(map);
 
 // Function to determine color based on earthquake depth
@@ -22,17 +21,15 @@ function getColor(depth) {
 
 // Function to set marker radius based on magnitude
 function getRadius(magnitude) {
-    return magnitude ? magnitude * 3 : 1;
+    return magnitude ? magnitude * 3 : 1; // Scale marker size by magnitude
 }
 
-// Fetch earthquake data and add it to the map
-fetch(url)
-    .then(response => response.json())
-    .then(data => {
-        data.features.forEach(quake => {
-            let [lon, lat, depth] = quake.geometry.coordinates;
-            let magnitude = quake.properties.mag;
-            let place = quake.properties.place;
+// Fetch earthquake data using D3 and add markers to the map
+d3.json(url).then(data => {
+    data.features.forEach(quake => {
+        let [lon, lat, depth] = quake.geometry.coordinates;
+        let magnitude = quake.properties.mag;
+        let place = quake.properties.place;
 
             // Create a circle marker with radius and color based on magnitude and depth
             L.circleMarker([lat, lon], {

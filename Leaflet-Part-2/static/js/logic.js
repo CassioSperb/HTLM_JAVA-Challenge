@@ -1,40 +1,33 @@
-// URLs for the data sources
-const earthquakeUrl = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
-const tectonicPlatesUrl = "https://raw.githubusercontent.com/fraxen/tectonicplates/master/GeoJSON/PB2002_boundaries.json";
+// URL for the JSON data (all earthquakes from the past week)
+let earthquakeUrl = "https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_week.geojson";
+let tectonicPlatesUrl = "https://your-tectonic-plates-data-source"; // Replace with your tectonic plates data source if available
 
-// Initialize the map
-const map = L.map('map').setView([37.7749, -122.4194], 4);
-
-// Define base layers for different map styles
-const grayscale = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+// Define base layers
+let streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
-    attribution: '© OpenStreetMap contributors',
-    opacity: 0.8
+    attribution: '© OpenStreetMap contributors'
 });
 
-const satellite = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+let satelliteLayer = L.tileLayer('https://{s}.sat.earth/openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 18,
-    attribution: '© OpenStreetMap contributors',
-    opacity: 0.8
+    attribution: '© SatelliteMap contributors'
 });
 
-const outdoors = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    maxZoom: 18,
-    attribution: '© OpenStreetMap contributors',
-    opacity: 0.8
+// Initialize the map with the default layer
+let map = L.map('map', {
+    center: [37.7749, -122.4194],
+    zoom: 4,
+    layers: [streetLayer] // Default layer
 });
-
-// Add default layer to map
-grayscale.addTo(map);
 
 // Function to determine color based on earthquake depth
 function getColor(depth) {
-    return depth > 90 ? '#00441b' :
-           depth > 70 ? '#006d2c' :
-           depth > 50 ? '#238b45' :
-           depth > 30 ? '#41ab5d' :
-           depth > 10 ? '#74c476' :
-                        '#c7e9c0';
+    return depth > 90 ? '#d73027' :
+           depth > 70 ? '#fc8d59' :
+           depth > 50 ? '#fee08b' :
+           depth > 30 ? '#d9ef8b' :
+           depth > 10 ? '#91cf60' :
+                        '#1a9850';
 }
 
 // Function to set marker radius based on magnitude
@@ -42,83 +35,74 @@ function getRadius(magnitude) {
     return magnitude ? magnitude * 3 : 1;
 }
 
-// Layer groups for earthquakes and tectonic plates
-const earthquakeLayer = L.layerGroup();
-const tectonicPlatesLayer = L.layerGroup();
+// Earthquake layer group
+let earthquakes = new L.LayerGroup();
 
-// Fetch and display earthquake data
-fetch(earthquakeUrl)
-    .then(response => response.json())
-    .then(data => {
-        data.features.forEach(quake => {
-            const [lon, lat, depth] = quake.geometry.coordinates;
-            const magnitude = quake.properties.mag;
-            const place = quake.properties.place;
+// Fetch earthquake data using D3 and add markers to the earthquake layer
+d3.json(earthquakeUrl).then(data => {
+    data.features.forEach(quake => {
+        let [lon, lat, depth] = quake.geometry.coordinates;
+        let magnitude = quake.properties.mag;
+        let place = quake.properties.place;
 
-            // Create a circle marker and add it to the earthquake layer
-            const marker = L.circleMarker([lat, lon], {
-                radius: getRadius(magnitude),
-                fillColor: getColor(depth),
-                color: getColor(depth),
-                weight: 0.5,
-                opacity: 1,
-                fillOpacity: 0.7
-            })
-            .bindPopup(`<h3>${place}</h3><p>Magnitude: ${magnitude}</p><p>Depth: ${depth} km</p>`);
+        L.circleMarker([lat, lon], {
+            radius: getRadius(magnitude),
+            fillColor: getColor(depth),
+            color: getColor(depth),
+            weight: 0.5,
+            opacity: 1,
+            fillOpacity: 0.7
+        })
+        .bindPopup(`<h3>${place}</h3><p>Magnitude: ${magnitude}</p><p>Depth: ${depth} km</p>`)
+        .addTo(earthquakes);
+    });
+});
 
-            marker.addTo(earthquakeLayer);
-        });
-    })
-    .catch(error => console.error("Error fetching earthquake data:", error));
+// Tectonic Plates layer group
+let tectonicPlates = new L.LayerGroup();
 
-// Fetch and display tectonic plate boundaries data
-fetch(tectonicPlatesUrl)
-    .then(response => response.json())
-    .then(plateData => {
-        L.geoJSON(plateData, {
-            style: {
-                color: "#ff7800",
-                weight: 2
-            }
-        }).addTo(tectonicPlatesLayer);
-    })
-    .catch(error => console.error("Error fetching tectonic plate data:", error));
+// Fetch tectonic plates data if available
+d3.json(tectonicPlatesUrl).then(data => {
+    L.geoJSON(data, {
+        style: {
+            color: "orange",
+            weight: 2
+        }
+    }).addTo(tectonicPlates);
+});
 
-// Add layer control with checkboxes for earthquakes and tectonic plates
-const baseMaps = {
-    "Grayscale": grayscale,
-    "Satellite": satellite,
-    "Outdoors": outdoors
+// Add earthquake and tectonic plates layers to the map
+earthquakes.addTo(map);
+tectonicPlates.addTo(map);
+
+// Define baseMaps and overlayMaps for layer control
+let baseMaps = {
+    "Street View": streetLayer,
+    "Satellite View": satelliteLayer
 };
 
-const overlayMaps = {
-    "Earthquakes": earthquakeLayer,
-    "Tectonic Plates": tectonicPlatesLayer
+let overlayMaps = {
+    "Earthquakes": earthquakes,
+    "Tectonic Plates": tectonicPlates
 };
 
-// Add control to toggle base maps and overlays
-L.control.layers(baseMaps, overlayMaps).addTo(map);
+// Add layer control to the map
+L.control.layers(baseMaps, overlayMaps, {
+    collapsed: false // Keep the layer control expanded
+}).addTo(map);
 
-// Initially add both earthquake and tectonic plates layers to the map
-earthquakeLayer.addTo(map);
-tectonicPlatesLayer.addTo(map);
-
-// Create and add a legend to explain the depth color scale
-const legend = L.control({ position: "bottomright" });
+// Create a legend for earthquake depth
+let legend = L.control({ position: "bottomright" });
 
 legend.onAdd = function () {
-    const div = L.DomUtil.create("div", "info legend");
-    const depths = [-10, 10, 30, 50, 70, 90];
-    const colors = ["#c7e9c0", "#74c476", "#41ab5d", "#238b45", "#006d2c", "#00441b"];
+    let div = L.DomUtil.create("div", "info legend");
+    let depths = [-10, 10, 30, 50, 70, 90];
+    let colors = ["#1a9850", "#91cf60", "#d9ef8b", "#fee08b", "#fc8d59", "#d73027"];
 
-    div.style.backgroundColor = "white";
-    div.style.padding = "10px";
     div.innerHTML += "<h4>Depth (km)</h4>";
-
     for (let i = 0; i < depths.length; i++) {
         div.innerHTML +=
-            `<i style="background:${colors[i]}; width: 18px; height: 18px; display: inline-block;"></i> ` +
-            `${depths[i]}${depths[i + 1] ? "&ndash;" + depths[i + 1] : "+"}<br>`;
+            `<i style="background:${colors[i]}"></i> ${depths[i]}${depths[i + 1] ? "&ndash;" + depths[i + 1] : "+"}<br>`;
     }
     return div;
 };
