@@ -57,13 +57,15 @@ legend.onAdd = function () {
     let depths = [-10, 10, 30, 50, 70, 90];
     let colors = ["#1a9850", "#91cf60", "#d9ef8b", "#fee08b", "#fc8d59", "#d73027"];
 
-    // Add legend title
-    div.innerHTML += "<h4>Earthquake Depth (km)</h4>";
+    // Add a white background and legend title
+    div.style.backgroundColor = "white";
+    div.style.padding = "10px";
+    div.innerHTML += "<h4 style='margin-bottom: 5px;'>Depth (km)</h4>";
 
     // Loop through depth intervals to generate a colored square for each range
     for (let i = 0; i < depths.length; i++) {
         div.innerHTML +=
-            `<i style="background:${colors[i]}"></i> ` +
+            `<i style="background:${colors[i]}; width: 18px; height: 18px; display: inline-block;"></i> ` +
             `${depths[i]}${depths[i + 1] ? "&ndash;" + depths[i + 1] : "+"}<br>`;
     }
     return div;
